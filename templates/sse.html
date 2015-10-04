@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+
+        <script type="text/javascript" src="/js/jquery-1.10.2.min.js"></script>
+
+        <link rel="stylesheet" type="text/css" href="/css/main.css" />
+
+        <link rel="stylesheet" type="text/css" href="/css/jquery.qtip.css" />
+        <script type="text/javascript" src="/js/jquery-1.10.2.min.js"></script>
+        <script type="text/javascript" src="/js/raphael-2.1.0.min.js"></script>
+        <script type="text/javascript" src="/js/jquery.qtip.min.js"></script>
+        <script type="text/javascript" src="/js/chroma.min.js"></script>
+        <script type="text/javascript" src="/js/kartograph.min.js"></script>
+
+        <script type="text/javascript">
+
+            $(document).ready(
+                    function() {
+                        var map, eventCount=0;
+
+                        $.fn.qtip.defaults.style.classes = 'ui-tooltip-bootstrap';
+                        $.fn.qtip.defaults.style.def = false;
+
+                        $.get('/svg/world.svg', function(svg) {
+                            var div = $('#map');
+
+                            // declare the dimensions of the ma
+                            w = $(document).width()*0.63;
+                            h = (320/640)*w
+                            map = kartograph.map(div, w, h);
+
+                            map.setMap(svg);
+
+                            map.addLayer('world', {
+                                styles: {
+                                    'stroke-width': 0.7,
+                                    fill: chroma("#777"),
+                                    stroke: chroma("#ccc")
+                                }
+                            });
+
+                        });
+
+                        console.log('Loaded!');
+                        sse = new EventSource('/auth');
+
+                        sse.onmessage = function(message) {
+                            console.log('Message Event!?!');
+                        }
+                        sse.onerror = function(e) {
+                            console.log('An ERROR has occured!');
+                        }
+
+                        sse.addEventListener('init', function(e) {
+                           console.log('Init Event!');
+
+                           obj = JSON.parse(e.data);
+                           console.log(obj);
+
+                           eventCount = obj.eventCount
+                           $("#eventCount").text(eventCount);
+
+                        }, false);
+
+                        sse.addEventListener('auth', function(e) {
+                           console.log('Auth Event!');
+                           eventCount+=1;
+                           $("#eventCount").text(eventCount);
+
+                           obj = JSON.parse(e.data);
+                           console.log(obj);
+
+                           display = obj.hostinfo.ip + " : " + obj.hostinfo.city + ", " + obj.hostinfo.region + "("+obj.hostinfo.country+") - " + obj.hostinfo.org
+                           $('#output').prepend('<li>'+display+'</li>');
+
+                           newPoint = map.addSymbols({
+                               type: kartograph.Bubble,
+                               data: [{ name: obj.hostinfo.region, lon: obj.hostinfo.loc.split(",")[1], lat: obj.hostinfo.loc.split(",")[0] }],
+                               location: function(d) { return [d.lon, d.lat] },
+                               radius: function(d) { return 200; },
+                               style: 'fill:red',
+                               tooltip: function(d) { return d.name; }
+                           });
+
+                           newPoint.update({
+                               radius: 7
+                           }, 1000, 'ease-out');
+                        }, false);
+
+                        sse.addEventListener('open', function(e) {
+                           console.log('Open!');
+                        }, false);
+
+                        sse.addEventListener('error', function(e) {
+                          if (e.readyState == EventSource.CLOSED) {
+                            console.log('Closed!');
+                          }
+                          console.log('Closed?');
+                        }, false);
+                    })
+
+        </script>
+    </head>
+
+    <body>
+
+        <h2>Live Attack Map</h2>
+
+        <div id="map">&nbsp;</div>
+
+        <div id="history">
+            <ul id="output">
+
+            </ul>
+        </div>
+
+        <div id="stats">
+            Total Events: <span id="eventCount">---</span>
+        </div>
+
+    </body>
+
+</html>
