@@ -9,7 +9,8 @@ import Queue
 import sys
 import os
 
-HISTORY_LENGTH = 50
+HISTORY_LENGTH = 500
+
 class AuthLogClient(threading.Thread):
     """ Acts as a client to the AuthLogWatcher. This client class is responsible
     for starting subscriptions over the XMLRPC connection hosted by the server
